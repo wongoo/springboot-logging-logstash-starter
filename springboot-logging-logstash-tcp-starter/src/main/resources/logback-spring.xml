@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration debug="false">
+    <springProperty name="logstash.destinations" source="logstash.destinations"
+                    defaultValue="none"/>
+
+    <springProperty name="logstash.keep_alive_duration" source="logstash.keep_alive_duration"
+                    defaultValue="5000"/>
+
+    <springProperty name="logstash.reconnection_delay" source="logstash.reconnection_delay"
+                    defaultValue="1000"/>
+
+    <springProperty name="logstash.write_buffer_size" source="logstash.write_buffer_size"
+                    defaultValue="16384"/>
+
+    <springProperty name="logstash.custom_fields" source="logstash.custom_fields"
+                    defaultValue="{}"/>
+
+    <springProperty name="logstash.disable_other_appenders"
+                    source="logstash.disable_other_appenders" defaultValue="false"/>
+
+    <springProperty name="logstash.version" source="logstash.version" defaultValue="1"/>
+
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+    <property name="LOG_FILE"
+              value="${LOG_FILE:-${LOG_PATH:-${LOG_TEMP:-${java.io.tmpdir:-/tmp}}}/spring.log}"/>
+
+    <include resource="org/springframework/boot/logging/logback/console-appender.xml"/>
+
+    <include resource="org/springframework/boot/logging/logback/file-appender.xml"/>
+
+    <if condition='property("logstash.destinations").equals("none")'>
+        <then>
+            <root level="INFO">
+                <appender-ref ref="CONSOLE"/>
+                <appender-ref ref="FILE"/>
+            </root>
+        </then>
+        <else>
+            <appender name="LOGSTASH_TCP"
+                      class="net.logstash.logback.appender.LogstashTcpSocketAppender">
+                <destination>${logstash.destinations}</destination>
+                <keepAliveDuration>${logstash.keep_alive_duration}</keepAliveDuration>
+                <reconnectionDelay>${logstash.reconnection_delay}</reconnectionDelay>
+                <writeBufferSize>${logstash.write_buffer_size}</writeBufferSize>
+
+                <!-- encoder is required -->
+                <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+                    <includeMdc>false</includeMdc>
+                    <includeContext>false</includeContext>
+                    <customFields>${logstash.custom_fields}</customFields>
+                    <version>${logstash.version}</version>
+                </encoder>
+            </appender>
+
+            <if condition='property("logstash.disable_other_appenders").equalsIgnoreCase("true")'>
+                <then>
+                    <root level="INFO">
+                        <appender-ref ref="LOGSTASH_TCP"/>
+                    </root>
+                </then>
+                <else>
+                    <root level="INFO">
+                        <appender-ref ref="CONSOLE"/>
+                        <appender-ref ref="FILE"/>
+                        <appender-ref ref="LOGSTASH_TCP"/>
+                    </root>
+                </else>
+            </if>
+        </else>
+    </if>
+</configuration>
